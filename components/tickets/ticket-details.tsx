@@ -3,10 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cancelTicketAction } from '@/app/actions/tickets';
-import { requestRefundAction } from '@/app/actions/refunds';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { RefundTicketModal } from '@/components/tickets/refund-ticket-modal';
 import { Train, MapPin, Calendar, CreditCard, ArrowLeft, Download, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { TicketWithDetails, TICKET_STATUS_LABELS, TICKET_STATUS_COLORS, WAGON_CATEGORIES, SEAT_TYPES } from '@/lib/types';
@@ -17,10 +15,7 @@ interface TicketDetailsProps {
 
 export function TicketDetails({ ticket }: TicketDetailsProps) {
   const router = useRouter();
-  const [showRefundForm, setShowRefundForm] = useState(false);
-  const [refundError, setRefundError] = useState<string | null>(null);
-  const [refundSuccess, setRefundSuccess] = useState<string | null>(null);
-  const [refundPending, setRefundPending] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
 
   async function handleCancel() {
     if (!confirm('Вы уверены, что хотите отменить билет?')) return;
@@ -29,24 +24,6 @@ export function TicketDetails({ ticket }: TicketDetailsProps) {
     if (result.success) {
       router.refresh();
     }
-  }
-
-  async function handleRefund(formData: FormData) {
-    setRefundPending(true);
-    setRefundError(null);
-    setRefundSuccess(null);
-
-    formData.set('ticketId', ticket.id);
-
-    const result = await requestRefundAction(undefined, formData);
-
-    if (result?.error) {
-      setRefundError(result.error);
-    } else if (result?.message) {
-      setRefundSuccess(result.message);
-    }
-
-    setRefundPending(false);
   }
 
   function handlePrint() {
@@ -231,11 +208,11 @@ export function TicketDetails({ ticket }: TicketDetailsProps) {
 
         {/* Actions */}
         <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
-          {canRefund && !showRefundForm && (
+          {canRefund && (
             <div className="flex gap-3">
               <Button
                 variant="destructive"
-                onClick={() => setShowRefundForm(true)}
+                onClick={() => setShowRefundModal(true)}
               >
                 Вернуть билет
               </Button>
@@ -250,84 +227,15 @@ export function TicketDetails({ ticket }: TicketDetailsProps) {
             <p className="text-sm text-gray-500">Поездка завершена</p>
           )}
         </div>
-
-        {/* Refund Form */}
-        {showRefundForm && (
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Форма возврата билета</h3>
-
-            <form action={handleRefund} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="reason">Причина возврата</Label>
-                <select
-                  id="reason"
-                  name="reason"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                  required
-                >
-                  <option value="">Выберите причину</option>
-                  <option value="change_of_plans">Изменение планов</option>
-                  <option value="illness">Болезнь</option>
-                  <option value="train_delay">Задержка поезда</option>
-                  <option value="wrong_ticket">Ошибка при оформлении</option>
-                  <option value="other">Другое</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cardNumber">Номер карты для возврата</Label>
-                <Input
-                  id="cardNumber"
-                  name="cardNumber"
-                  type="text"
-                  placeholder="**** **** **** 1234"
-                  required
-                />
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                <p className="text-sm text-gray-600">
-                  Стоимость билета: <span className="font-semibold">{ticket.price.toLocaleString('ru-RU')} ₽</span>
-                </p>
-                <p className="text-sm text-gray-600">
-                  Сбор за возврат: <span className="font-semibold text-red-600">
-                    {ticket.price >= 5000
-                      ? `${Math.round(ticket.price * 0.05).toLocaleString('ru-RU')} ₽ (5%)`
-                      : `${Math.round(ticket.price * 0.2).toLocaleString('ru-RU')} ₽ (20%)`}
-                  </span>
-                </p>
-                <p className="text-sm font-semibold text-gray-900">
-                  Итого к возврату: <span className="text-green-600">
-                    {ticket.price >= 5000
-                      ? (ticket.price - Math.round(ticket.price * 0.05)).toLocaleString('ru-RU')
-                      : (ticket.price - Math.round(ticket.price * 0.2)).toLocaleString('ru-RU')} ₽
-                  </span>
-                </p>
-              </div>
-
-              {refundError && (
-                <p className="text-sm text-red-500">{refundError}</p>
-              )}
-              {refundSuccess && (
-                <p className="text-sm text-green-600">{refundSuccess}</p>
-              )}
-
-              <div className="flex gap-3">
-                <Button type="submit" disabled={refundPending}>
-                  {refundPending ? 'Отправка...' : 'Отправить запрос'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => { setShowRefundForm(false); setRefundError(null); }}
-                >
-                  Отмена
-                </Button>
-              </div>
-            </form>
-          </div>
-        )}
       </div>
+
+      {/* Refund Modal */}
+      <RefundTicketModal
+        ticket={ticket}
+        open={showRefundModal}
+        onOpenChange={setShowRefundModal}
+        onSuccess={() => router.refresh()}
+      />
     </div>
   );
 }

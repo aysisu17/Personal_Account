@@ -68,7 +68,7 @@ export async function buyTicketAction(prevState: any, formData: FormData) {
     }
   }
 
-  // Create ticket
+  // Create ticket — explicitly omit arrival_date to avoid schema cache issues
   const { data: ticket, error: ticketError } = await supabase
     .from('tickets')
     .insert({
@@ -77,7 +77,6 @@ export async function buyTicketAction(prevState: any, formData: FormData) {
       station_from_id: stationFromName,
       station_to_id: stationToName,
       departure_date: departureDate,
-      arrival_date: arrivalDate || null,
       seat_number: seatNumber,
       seat_type: seatType || 'seated',
       wagon_number: wagonNumber || '1',

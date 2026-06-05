@@ -8,6 +8,7 @@ import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead } 
 import { getLinkedCards, getSubscriptions } from '@/app/actions/profile';
 import { getNotificationSettings } from '@/app/actions/notifications';
 import { TicketCard } from '@/components/tickets/ticket-card';
+import { AnalyticsDashboard } from '@/components/dashboard/analytics-dashboard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -248,6 +249,9 @@ export default function CabinetPage() {
           );
         })}
       </div>
+
+      {/* Analytics Dashboard */}
+      <AnalyticsDashboard />
 
       {/* Tab Content */}
       <div className="min-h-[400px]">

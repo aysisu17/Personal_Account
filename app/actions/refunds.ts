@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { calculateRefund } from '@/lib/refund-calculator';
 
 export async function requestRefundAction(prevState: any, formData: FormData) {
   const supabase = await createClient();
@@ -35,24 +36,15 @@ export async function requestRefundAction(prevState: any, formData: FormData) {
     return { success: false, error: 'Возврат возможен только для оплаченных или оформленных билетов' };
   }
 
-  // Calculate refund amount
-  // If more than 24 hours before departure - full refund minus fee
-  // If less than 24 hours - partial refund
-  const departureDate = new Date(ticket.departure_date);
-  const now = new Date();
-  const hoursUntilDeparture = (departureDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+  // Calculate refund amount using shared calculator
+  const calculation = calculateRefund(ticket.price, ticket.departure_date);
 
-  let feePercent = 0;
-  if (hoursUntilDeparture > 24) {
-    feePercent = 5; // 5% fee
-  } else if (hoursUntilDeparture > 2) {
-    feePercent = 20; // 20% fee
-  } else {
-    feePercent = 50; // 50% fee
+  if (calculation.isPastDeparture) {
+    return { success: false, error: 'Возврат невозможен — поездка уже началась' };
   }
 
-  const feeAmount = Math.round(ticket.price * feePercent / 100);
-  const totalRefund = ticket.price - feeAmount;
+  const feeAmount = calculation.feeAmount;
+  const totalRefund = calculation.totalRefund;
 
   // Create refund request
   const { data: refund, error: refundError } = await supabase
